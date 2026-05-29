@@ -8,7 +8,6 @@ import {
   Settings,
   Shield,
   Database,
-  Database,
   Bot,
   Package,
   Server,
