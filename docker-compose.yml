@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: midopanel_backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /:/host_root:ro # Required for Tailscale and OpenRC system commands (though ideally done via ssh/API, we map this to execute host commands if running privileged, or we configure SSH)
+    pid: host # Required if executing tailscale on the host directly from container
+    privileged: true # Required for host management commands (rc-service, tailscale) if directly executed
+    network_mode: host # Easiest way to let node-pty and tailscale interact with the host network
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=change_this_secret_in_production
+      - DB_PATH=/app/database/midopanel.sqlite
+      - TARGET_OS=alpine
+      - INIT_SYSTEM=openrc
+      - DEFAULT_SHELL=/bin/ash
+      - SERVICE_MANAGER=openrc
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: midopanel_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:3001

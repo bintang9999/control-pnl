@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: midopanel_backend_prod
+    restart: always
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /:/host_root:ro
+    pid: host
+    privileged: true
+    network_mode: host
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-change_this_secret_in_production}
+      - DB_PATH=/app/database/midopanel.sqlite
+      - TARGET_OS=alpine
+      - INIT_SYSTEM=openrc
+      - DEFAULT_SHELL=/bin/ash
+      - SERVICE_MANAGER=openrc
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: midopanel_frontend_prod
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:3001
