@@ -20,6 +20,14 @@ const services_1 = __importDefault(require("./routes/services"));
 const backup_1 = __importDefault(require("./routes/backup"));
 const security_1 = __importDefault(require("./routes/security"));
 const tailscale_1 = __importDefault(require("./routes/tailscale"));
+const settings_1 = __importDefault(require("./routes/settings"));
+const compose_1 = __importDefault(require("./routes/compose"));
+const health_1 = __importDefault(require("./routes/health"));
+const ai_1 = __importDefault(require("./routes/ai"));
+const marketplace_1 = __importDefault(require("./routes/marketplace"));
+const firewall_1 = __importDefault(require("./routes/firewall"));
+const nodes_1 = __importDefault(require("./routes/nodes"));
+const proxy_1 = __importDefault(require("./routes/proxy"));
 const terminal_1 = require("./services/terminal");
 // Ensure DB is initialized
 require("./database");
@@ -46,6 +54,19 @@ app.use('/api/services', services_1.default);
 app.use('/api/backup', backup_1.default);
 app.use('/api/security', security_1.default);
 app.use('/api/tailscale', tailscale_1.default);
+app.use('/api/settings', settings_1.default);
+app.use('/api/compose', compose_1.default);
+app.use('/api/health', health_1.default);
+app.use('/api/ai', ai_1.default);
+app.use('/api/marketplace', marketplace_1.default);
+app.use('/api/firewall', firewall_1.default);
+app.use('/api/nodes', nodes_1.default);
+app.use('/api/proxy', proxy_1.default);
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Internal Server Error' });
+});
 // We will add files, services, security routes in subsequent steps
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', os: os_1.default.type(), hostname: os_1.default.hostname() });
@@ -70,11 +91,12 @@ io.on('connection', (socket) => {
     let monitorInterval;
     const sendStats = async () => {
         try {
-            const [cpu, mem, osInfo, net] = await Promise.all([
+            const [cpu, mem, osInfo, net, temp] = await Promise.all([
                 systeminformation_1.default.currentLoad(),
                 systeminformation_1.default.mem(),
                 systeminformation_1.default.osInfo(),
-                systeminformation_1.default.networkStats()
+                systeminformation_1.default.networkStats(),
+                systeminformation_1.default.cpuTemperature()
             ]);
             socket.emit('server_stats', {
                 cpu: cpu.currentLoad,
@@ -91,8 +113,17 @@ io.on('connection', (socket) => {
                     hostname: osInfo.hostname,
                     uptime: systeminformation_1.default.time().uptime
                 },
-                network: net.length > 0 ? { rx: net[0].rx_sec, tx: net[0].tx_sec } : null
+                network: net.length > 0 ? { rx: net[0].rx_sec, tx: net[0].tx_sec } : null,
+                cpuTemp: temp.main
             });
+            // Threshold Alerts
+            if (cpu.currentLoad > 90) {
+                socket.emit('system_alert', { title: 'High CPU Usage', message: `CPU load is at ${cpu.currentLoad.toFixed(1)}%`, type: 'warning' });
+            }
+            const memUsage = (mem.active / mem.total) * 100;
+            if (memUsage > 90) {
+                socket.emit('system_alert', { title: 'High RAM Usage', message: `Memory usage is at ${memUsage.toFixed(1)}%`, type: 'warning' });
+            }
         }
         catch (err) { }
     };

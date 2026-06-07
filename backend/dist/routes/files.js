@@ -10,15 +10,16 @@ const multer_1 = __importDefault(require("multer"));
 const auth_1 = require("../middleware/auth");
 const database_1 = require("../database");
 const router = express_1.default.Router();
-const BASE_DIR = '/home/bintang';
 // Setup multer for memory storage initially, then we write to safe path
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 // Helper to safely resolve and validate paths
-const getSafePath = (userPath) => {
+const getSafePath = async (userPath) => {
+    const setting = await (0, database_1.dbGet)("SELECT value FROM settings WHERE key = 'safe_folder_path'");
+    const baseDir = setting ? setting.value : '/home/bintang';
     // Prevent directory traversal
     const normalizedPath = path_1.default.normalize(userPath || '/').replace(/^(\.\.[\/\\])+/, '');
-    const resolvedPath = path_1.default.resolve(BASE_DIR, `.${normalizedPath}`);
-    if (!resolvedPath.startsWith(BASE_DIR)) {
+    const resolvedPath = path_1.default.resolve(baseDir, `.${normalizedPath}`);
+    if (!resolvedPath.startsWith(baseDir)) {
         throw new Error('Path traversal detected');
     }
     return resolvedPath;
@@ -30,7 +31,7 @@ const logAction = async (req, action, details) => {
 // List directory
 router.get('/list', auth_1.requireAuth, async (req, res) => {
     try {
-        const targetPath = getSafePath(req.query.path || '/');
+        const targetPath = await getSafePath(req.query.path || '/');
         const items = await promises_1.default.readdir(targetPath, { withFileTypes: true });
         const result = await Promise.all(items.map(async (item) => {
             const itemPath = path_1.default.join(targetPath, item.name);
@@ -59,7 +60,7 @@ router.get('/list', auth_1.requireAuth, async (req, res) => {
 // Read text file
 router.get('/read', auth_1.requireAuth, async (req, res) => {
     try {
-        const targetPath = getSafePath(req.query.path);
+        const targetPath = await getSafePath(req.query.path);
         const stat = await promises_1.default.stat(targetPath);
         if (stat.isDirectory() || stat.size > 5 * 1024 * 1024) {
             return res.status(400).json({ error: 'Cannot read directory or file > 5MB' });
@@ -75,7 +76,7 @@ router.get('/read', auth_1.requireAuth, async (req, res) => {
 router.post('/mkdir', auth_1.requireAuth, async (req, res) => {
     try {
         const { dirPath, name } = req.body;
-        const targetPath = getSafePath(path_1.default.join(dirPath || '/', name));
+        const targetPath = await getSafePath(path_1.default.join(dirPath || '/', name));
         await promises_1.default.mkdir(targetPath, { recursive: true });
         await logAction(req, 'mkdir', `Created directory: ${targetPath}`);
         res.json({ success: true });
@@ -88,7 +89,7 @@ router.post('/mkdir', auth_1.requireAuth, async (req, res) => {
 router.put('/edit', auth_1.requireAuth, async (req, res) => {
     try {
         const { filePath, content } = req.body;
-        const targetPath = getSafePath(filePath);
+        const targetPath = await getSafePath(filePath);
         await promises_1.default.writeFile(targetPath, content, 'utf-8');
         await logAction(req, 'edit_file', `Edited file: ${targetPath}`);
         res.json({ success: true });
@@ -101,9 +102,12 @@ router.put('/edit', auth_1.requireAuth, async (req, res) => {
 router.post('/rename', auth_1.requireAuth, async (req, res) => {
     try {
         const { oldPath, newName } = req.body;
-        const sourcePath = getSafePath(oldPath);
+        const sourcePath = await getSafePath(oldPath);
         const parentDir = path_1.default.dirname(sourcePath);
-        const destPath = getSafePath(path_1.default.join(parentDir.replace(BASE_DIR, '') || '/', newName));
+        // We need baseDir for rename safety
+        const setting = await (0, database_1.dbGet)("SELECT value FROM settings WHERE key = 'safe_folder_path'");
+        const baseDir = setting ? setting.value : '/home/bintang';
+        const destPath = await getSafePath(path_1.default.join(parentDir.replace(baseDir, '') || '/', newName));
         await promises_1.default.rename(sourcePath, destPath);
         await logAction(req, 'rename', `Renamed ${sourcePath} to ${destPath}`);
         res.json({ success: true });
@@ -118,7 +122,7 @@ router.post('/upload', auth_1.requireAuth, upload.single('file'), async (req, re
         if (!req.file)
             return res.status(400).json({ error: 'No file provided' });
         const dirPath = req.body.path || '/';
-        const targetPath = getSafePath(path_1.default.join(dirPath, req.file.originalname));
+        const targetPath = await getSafePath(path_1.default.join(dirPath, req.file.originalname));
         await promises_1.default.writeFile(targetPath, req.file.buffer);
         await logAction(req, 'upload', `Uploaded file to: ${targetPath}`);
         res.json({ success: true });
@@ -130,7 +134,7 @@ router.post('/upload', auth_1.requireAuth, upload.single('file'), async (req, re
 // Download file
 router.get('/download', auth_1.requireAuth, async (req, res) => {
     try {
-        const targetPath = getSafePath(req.query.path);
+        const targetPath = await getSafePath(req.query.path);
         const stat = await promises_1.default.stat(targetPath);
         if (stat.isDirectory()) {
             return res.status(400).json({ error: 'Cannot download directory directly' });
@@ -139,6 +143,30 @@ router.get('/download', auth_1.requireAuth, async (req, res) => {
     }
     catch (error) {
         res.status(403).json({ error: error.message || 'Failed to download file' });
+    }
+});
+// Delete file or empty directory
+router.delete('/delete', auth_1.requireAuth, async (req, res) => {
+    try {
+        const targetPath = await getSafePath(req.query.path);
+        const stat = await promises_1.default.stat(targetPath);
+        // Safety check: Don't allow deleting the root safe folder itself
+        const setting = await (0, database_1.dbGet)("SELECT value FROM settings WHERE key = 'safe_folder_path'");
+        const baseDir = setting ? setting.value : '/home/bintang';
+        if (targetPath === baseDir) {
+            return res.status(403).json({ error: 'Cannot delete the root safe directory' });
+        }
+        if (stat.isDirectory()) {
+            await promises_1.default.rmdir(targetPath);
+        }
+        else {
+            await promises_1.default.unlink(targetPath);
+        }
+        await logAction(req, 'delete', `Deleted: ${targetPath}`);
+        res.json({ success: true });
+    }
+    catch (error) {
+        res.status(403).json({ error: error.message || 'Failed to delete path' });
     }
 });
 exports.default = router;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { api } from '../lib/api';
 
 export function NetworkPage() {

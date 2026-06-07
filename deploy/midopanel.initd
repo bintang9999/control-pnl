@@ -1,0 +1,34 @@
+#!/sbin/openrc-run
+
+name="midopanel"
+description="MidoPanel Node.js Backend Server"
+
+command="/usr/bin/node"
+command_args="/home/bintang/Documents/control-pnl/backend/dist/index.js"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+# Set environment variables directly for the daemon
+export NODE_ENV="production"
+export PORT="3001"
+export JWT_SECRET="change_this_secret_in_production"
+export DB_PATH="/home/bintang/Documents/control-pnl/database/midopanel.sqlite"
+export TARGET_OS="alpine"
+export INIT_SYSTEM="openrc"
+export DEFAULT_SHELL="/bin/ash"
+export SERVICE_MANAGER="openrc"
+
+depend() {
+    need net
+    use logger
+    after firewall
+}
+
+start_pre() {
+    # Ensure the working directory and logs directory exist
+    checkpath -d -m 0755 -o root:root /home/bintang/Documents/control-pnl/backend
+    checkpath -d -m 0755 -o root:root /home/bintang/Documents/control-pnl/logs
+    
+    # Change to backend directory so sqlite and other relative paths resolve correctly
+    cd /home/bintang/Documents/control-pnl/backend
+}

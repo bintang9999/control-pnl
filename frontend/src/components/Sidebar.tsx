@@ -8,13 +8,12 @@ import {
   Settings,
   Shield,
   Database,
-  Bot,
   Package,
   Server,
   Globe
 } from 'lucide-react';
 
-const navItems = [
+const navItems: Array<{ icon: any, label: string, path: string, disabled?: boolean }> = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Box, label: 'Docker Containers', path: '/docker' },
   { icon: Box, label: 'Docker Compose', path: '/compose' },

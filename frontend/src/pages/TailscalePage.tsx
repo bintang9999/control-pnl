@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Network, Server, Share2, Globe2 } from 'lucide-react';
+import { Network, Server, Globe2 } from 'lucide-react';
 import { api } from '../lib/api';
 
 export function TailscalePage() {

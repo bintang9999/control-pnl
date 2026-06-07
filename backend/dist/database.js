@@ -45,6 +45,47 @@ function initDb() {
       status TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+        // Nodes table
+        exports.db.run(`CREATE TABLE IF NOT EXISTS nodes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      ip_address TEXT NOT NULL,
+      api_key TEXT NOT NULL,
+      status TEXT DEFAULT 'offline',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+        // Settings table
+        exports.db.run(`CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`);
+        // Proxies table
+        exports.db.run(`CREATE TABLE IF NOT EXISTS proxies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      domain TEXT UNIQUE NOT NULL,
+      target_host TEXT NOT NULL,
+      target_port INTEGER NOT NULL,
+      ssl_enabled BOOLEAN DEFAULT 0,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+        // Insert default settings if empty
+        exports.db.get('SELECT COUNT(*) as count FROM settings', [], (err, row) => {
+            if (row && row.count === 0) {
+                const defaultSettings = [
+                    ['terminal_enabled', 'true'],
+                    ['docker_enabled', 'true'],
+                    ['safe_folder_path', '/home/bintang'],
+                    ['backup_path', '/home/bintang/backups/midopanel'],
+                    ['telegram_bot_token', ''],
+                    ['telegram_chat_id', ''],
+                    ['ai_api_key', '']
+                ];
+                const stmt = exports.db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
+                defaultSettings.forEach(setting => stmt.run(setting));
+                stmt.finalize();
+            }
+        });
         // Create default admin if not exists
         exports.db.get('SELECT * FROM users WHERE username = ?', ['admin'], async (err, row) => {
             if (!row) {

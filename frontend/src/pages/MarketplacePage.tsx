@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { api } from '../lib/api';
 
 export function MarketplacePage() {

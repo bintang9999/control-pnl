@@ -32,26 +32,28 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupTerminalSession = void 0;
 const pty = __importStar(require("node-pty"));
-const os_1 = __importDefault(require("os"));
 const database_1 = require("../database");
-// Helper to determine the default shell (prefer ash on Alpine)
-const shell = os_1.default.platform() === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/sh');
+const telegram_1 = require("./telegram");
+// Helper to determine the default shell (prioritize Alpine's /bin/ash as per specs)
+const shell = process.env.DEFAULT_SHELL || '/bin/ash';
 const setupTerminalSession = (socket) => {
     let ptyProcess = null;
     const user = socket.user;
     socket.on('terminal_init', async (config) => {
         try {
+            const setting = await (0, database_1.dbGet)("SELECT value FROM settings WHERE key = 'terminal_enabled'");
+            if (setting && setting.value !== 'true') {
+                return socket.emit('terminal_error', 'Terminal feature is disabled by administrator');
+            }
             if (ptyProcess) {
                 ptyProcess.kill();
             }
             // Log the terminal access
             await (0, database_1.dbRun)('INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)', [user?.id, 'terminal_open', `Shell: ${shell}`, socket.handshake.address]);
+            (0, telegram_1.sendTelegramNotification)(`🚨 <b>MidoPanel Alert</b>\nWeb SSH Terminal session opened by <code>${user?.username || 'unknown'}</code> from IP <code>${socket.handshake.address}</code>`);
             ptyProcess = pty.spawn(shell, [], {
                 name: 'xterm-color',
                 cols: config.cols || 80,

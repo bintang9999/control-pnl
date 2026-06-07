@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Play, Square, RotateCw, Terminal, ScrollText } from 'lucide-react';
+import { Play, Square, RotateCw, Terminal, ScrollText } from 'lucide-react';
 import { socket } from '../lib/socket';
 
 interface Container {

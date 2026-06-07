@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("../database");
+const telegram_1 = require("../services/telegram");
 const router = express_1.default.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_dev_only';
 router.post('/login', async (req, res) => {
@@ -19,14 +20,17 @@ router.post('/login', async (req, res) => {
         if (!user) {
             // Dummy compare to mitigate timing attacks
             await bcrypt_1.default.compare(password, '$2b$10$abcdefghijklmnopqrstuv');
+            await (0, telegram_1.sendTelegramNotification)(`⚠️ <b>MidoPanel Alert</b>\nFailed login attempt for unknown user: <code>${username}</code> from IP <code>${req.ip}</code>`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         const match = await bcrypt_1.default.compare(password, user.password);
         if (!match) {
+            await (0, telegram_1.sendTelegramNotification)(`⚠️ <b>MidoPanel Alert</b>\nFailed login attempt for user: <code>${username}</code> from IP <code>${req.ip}</code>`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         // Log the successful login
         await (0, database_1.dbRun)('INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)', [user.id, 'login', req.ip]);
+        await (0, telegram_1.sendTelegramNotification)(`✅ <b>MidoPanel Alert</b>\nSuccessful login for user: <code>${username}</code> from IP <code>${req.ip}</code>`);
         const token = jsonwebtoken_1.default.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
         res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
     }

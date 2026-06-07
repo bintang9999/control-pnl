@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Server, Activity, Plus } from 'lucide-react';
+import { Server, Plus } from 'lucide-react';
 import { api } from '../lib/api';
 
 export function ClusterPage() {

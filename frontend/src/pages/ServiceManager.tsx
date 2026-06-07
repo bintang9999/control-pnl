@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Activity, Play, Square, RotateCw, Settings2 } from 'lucide-react';
+import { Play, Square, RotateCw, Settings2 } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface Service {

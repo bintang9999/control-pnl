@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, ShieldAlert, Activity, Key } from 'lucide-react';
+import { Shield, Activity, Key } from 'lucide-react';
 import { api } from '../lib/api';
 
 export function SecurityPage() {
