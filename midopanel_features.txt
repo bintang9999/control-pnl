@@ -1,0 +1,73 @@
+===================================================
+                MIDOPANEL - APP OVERVIEW
+===================================================
+
+MidoPanel adalah sebuah panel kontrol (Control Panel) server berbasis web interaktif yang dikembangkan untuk mengelola infrastruktur server, kontainer Docker, file, hingga jaringan dengan antarmuka grafis yang modern (Dark/Glassmorphism).
+
+---------------------------------------------------
+1. TEKNOLOGI YANG DIGUNAKAN
+---------------------------------------------------
+A. BACKEND (SERVER)
+- Runtime: Node.js
+- Bahasa: TypeScript
+- Framework API: Express.js
+- Real-time Comms: Socket.IO (WebSocket)
+- Database: SQLite (Ringan, tanpa server DB eksternal)
+- Keamanan: JSON Web Token (JWT), bcrypt (Hashing), express-rate-limit
+- Integrasi Sistem: 
+  * dockerode (Docker API client)
+  * node-pty (Membuat instance terminal host native)
+  * systeminformation (Mengambil metrik hardware server)
+- Notifikasi: Telegram Bot API
+
+B. FRONTEND (CLIENT)
+- Framework: React 19 (Hooks-based)
+- Build Tool: Vite (Sangat cepat untuk HMR dan build)
+- Bahasa: TypeScript
+- Styling: Tailwind CSS (Utility-first, Glassmorphism UI)
+- State Management: Zustand (Ringan dan reaktif)
+- Ikon: Lucide React
+- Komponen Terminal: xterm.js & xterm-addon-fit (Web-based SSH/TTY)
+- Grafik & Visual: Recharts
+- HTTP Client: Axios
+
+---------------------------------------------------
+2. DAFTAR FITUR UTAMA
+---------------------------------------------------
+1. 🔐 Sistem Autentikasi & Keamanan (Security)
+   - Login aman dengan enkripsi password (bcrypt) dan token (JWT).
+   - Rate limiting untuk mencegah Brute Force.
+   - Peringatan (Alert) via Telegram Bot setiap ada percobaan login yang gagal atau mencurigakan.
+   - Sistem Audit Logs (pencatatan aktivitas admin).
+
+2. 📊 Dashboard Monitoring Real-time
+   - Menampilkan status CPU, RAM, Suhu (Temperature), dan Jaringan secara langsung via Socket.IO tanpa perlu refresh.
+   - Peringatan otomatis (Alert) jika CPU/RAM melewati ambang batas (contoh: 90%).
+
+3. 🐳 Docker & Compose Manager
+   - Menampilkan daftar semua container beserta status aktifnya.
+   - Kontrol container: Start, Stop, dan Restart.
+   - Real-time Logs: Menampilkan log console container secara langsung.
+   - Interactive Terminal: Mengizinkan admin masuk ke dalam root shell (sh/bash) dari sebuah container.
+   - Docker Compose: Fitur unggah file docker-compose.yml dan otomatis melakukan deployment (up -d).
+
+4. 💻 Web SSH Terminal (Host)
+   - Menyediakan shell terminal native (Linux bash/sh) milik Host Server yang dapat diakses langsung dari browser.
+   - Bisa menyesuaikan ukuran layar (auto-resize) dan memiliki peringatan keamanan.
+
+5. 📁 File Manager
+   - Manajemen file sistem server dari web (browse, upload, hapus, edit file teks).
+
+6. ⚙️ Service & Network Management (Berdasarkan rute)
+   - Tailscale/VPN Manager: Memantau dan mengelola mesh network Tailscale.
+   - Firewall Manager: Mengatur keamanan jaringan (blokir IP, allow port).
+   - Reverse Proxy: Manajemen proxy untuk merutekan domain ke port lokal (Nginx).
+   - Services Manager: Mengatur status system services (OpenRC / systemd) server.
+
+7. 📦 Backup & Maintenance
+   - Sistem backup terintegrasi untuk mencadangkan database atau konfigurasi.
+   - Health check endpoint untuk memantau waktu hidup (uptime) layanan.
+
+===================================================
+Dokumen digenerate oleh MidoPanel AI Assistant
+===================================================

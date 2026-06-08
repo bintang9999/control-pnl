@@ -138,6 +138,70 @@ io.on('connection', (socket) => {
             socket.emit('error', 'Failed to fetch containers');
         }
     });
+    // Docker Logs
+    socket.on('docker_logs_init', async (containerId) => {
+        try {
+            const container = docker.getContainer(containerId);
+            const logStream = await container.logs({ follow: true, stdout: true, stderr: true, tail: 100 });
+            const onData = (chunk) => {
+                // Dockerode returns multiplexed streams if tty is false, but stringifying mostly works.
+                socket.emit('docker_logs_data', { id: containerId, data: chunk.toString('utf8') });
+            };
+            logStream.on('data', onData);
+            const cleanupLogs = () => {
+                if (logStream) {
+                    logStream.off('data', onData);
+                    if (typeof logStream.destroy === 'function') {
+                        logStream.destroy();
+                    }
+                }
+            };
+            socket.once('docker_logs_stop', cleanupLogs);
+            socket.once('disconnect', cleanupLogs);
+        }
+        catch (err) {
+            socket.emit('docker_logs_error', err.message);
+        }
+    });
+    // Docker Terminal
+    socket.on('docker_terminal_init', async (config) => {
+        try {
+            const container = docker.getContainer(config.id);
+            const exec = await container.exec({
+                Cmd: ['/bin/sh', '-c', 'bash || sh'],
+                AttachStdin: true,
+                AttachStdout: true,
+                AttachStderr: true,
+                Tty: true
+            });
+            const stream = await exec.start({ hijack: true, stdin: true });
+            if (config.cols && config.rows) {
+                await exec.resize({ w: config.cols, h: config.rows });
+            }
+            const onData = (chunk) => {
+                socket.emit('docker_terminal_data', chunk.toString('utf8'));
+            };
+            stream.on('data', onData);
+            const inputHandler = (data) => {
+                stream.write(data);
+            };
+            const resizeHandler = (size) => {
+                exec.resize({ w: size.cols, h: size.rows }).catch(() => { });
+            };
+            socket.on('docker_terminal_input', inputHandler);
+            socket.on('docker_terminal_resize', resizeHandler);
+            const cleanupTerminal = () => {
+                socket.off('docker_terminal_input', inputHandler);
+                socket.off('docker_terminal_resize', resizeHandler);
+                stream.end();
+            };
+            socket.once('docker_terminal_stop', cleanupTerminal);
+            socket.once('disconnect', cleanupTerminal);
+        }
+        catch (err) {
+            socket.emit('docker_terminal_error', err.message);
+        }
+    });
     // Terminal setup
     (0, terminal_1.setupTerminalSession)(socket);
     socket.on('disconnect', () => {

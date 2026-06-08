@@ -166,7 +166,9 @@ io.on('connection', (socket) => {
       const cleanupLogs = () => {
         if (logStream) {
           logStream.off('data', onData);
-          logStream.destroy();
+          if (typeof (logStream as any).destroy === 'function') {
+            (logStream as any).destroy();
+          }
         }
       };
 
