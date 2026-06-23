@@ -26,4 +26,4 @@ Login bawaan:
 admin / admin
 Keamanan
 
-MidoPanel dirancang untuk penggunaan pada jaringan privat dan sangat disarankan diakses melalui VPN seperti Tailscale. Jangan mengekspos panel langsung ke internet tanpa HTTPS, reverse proxy yang aman, dan autentikasi yang kuat.
+Dirancang untuk penggunaan pada jaringan privat dan sangat disarankan diakses melalui VPN seperti Tailscale. Jangan mengekspos panel langsung ke internet tanpa HTTPS, reverse proxy yang aman, dan autentikasi yang kuat.
